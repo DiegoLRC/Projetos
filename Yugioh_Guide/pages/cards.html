@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Buscar Cartas de Yu-Gi-Oh!</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+
+<body>
+  <!-- Container onde a sidebar será inserida (gerenciada por main.js) -->
+  <div id="sidebar-container"></div>
+
+  <!-- Conteúdo Principal -->
+  <main class="content">
+    <header class="content-header">
+      <h2>🃏 Buscar Cartas de Yu-Gi-Oh!</h2>
+      <!-- Botão de menu para mobile -->
+      <button class="mobile-toggle" onclick="toggleMobileSidebar()">☰</button>
+    </header>
+    
+    <div class="content-body">
+      <!-- SEÇÃO 1: Caixa de busca -->
+      <div class="search-box">
+        <input 
+          type="text" 
+          id="card-search" 
+          placeholder="Ex: Blue Eyes, Dark Magician, Red Eyes..." 
+          autocomplete="off"
+        />
+        <button id="search-btn">🔍 Buscar</button>
+      </div>
+
+      <!-- SEÇÃO 2: Indicador de carregamento -->
+      <div id="loading" style="display: none; text-align: center; padding: 20px; color: #666;">
+        ⏳ Carregando cartas...
+      </div>
+
+      <!-- SEÇÃO 3: Grid de cartas (resultados aparecem aqui) -->
+      <div id="results" class="card-grid">
+        <!-- As cartas serão inseridas aqui pelo JavaScript -->
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== SCRIPTS ==================== -->
+  
+  <!-- Carrega e inicializa a sidebar -->
+  <script src="/assets/js/main.js"></script>
+  
+  <!-- Script em módulo para buscar cartas da API -->
+  <script type="module">
+    // Importa as funções do arquivo yugioh.js
+    import { searchCards, renderCards } from '/assets/js/yugioh.js';
+
+    /**
+     * Aguarda a página carregar completamente antes de inicializar
+     */
+    window.addEventListener('DOMContentLoaded', () => {
+      // Pega os elementos necessários do HTML
+      const searchInput = document.getElementById('card-search');
+      const searchBtn = document.getElementById('search-btn');
+      const loading = document.getElementById('loading');
+      const resultsDiv = document.getElementById('results');
+
+      // Verifica se os elementos existem (segurança)
+      if (!searchInput || !searchBtn) {
+        console.error('❌ Elementos de busca não encontrados!');
+        return;
+      }
+
+      /**
+       * Função executada quando clica em "Buscar" ou pressiona Enter
+       * 
+       * O que faz:
+       * 1. Pega o texto digitado
+       * 2. Mostra o indicador de carregamento
+       * 3. Busca cartas na API
+       * 4. Exibe as cartas encontradas
+       */
+      async function handleSearch() {
+        const query = searchInput.value.trim();
+        
+        // Se não digitou nada, avisa
+        if (!query) {
+          alert('Escreva o nome de uma carta! Exemplo: Blue Eyes');
+          return;
+        }
+
+        // Limpa tudo e mostra carregamento
+        resultsDiv.innerHTML = '';
+        loading.style.display = 'block';
+
+        // Busca as cartas na API
+        const cards = await searchCards(query);
+        
+        // Esconde o indicador de carregamento
+        loading.style.display = 'none';
+        
+        // Exibe as cartas na tela
+        renderCards(cards);
+      }
+
+      // Evento: clique no botão buscar
+      searchBtn.addEventListener('click', handleSearch);
+      
+      // Evento: pressiona Enter no campo de busca
+      searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleSearch();
+      });
+    });
+  </script>
+</body>
+
+</html>
