@@ -26,8 +26,7 @@
   border-radius: 16px;
   transition: width 0.3s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  position: sticky;
-  top: 20px;
+  position: relative;
   overflow: visible;
   flex-shrink: 0;
   height: calc(100vh - 40px);

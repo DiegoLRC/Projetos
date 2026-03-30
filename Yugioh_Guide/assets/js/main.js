@@ -1,163 +1,124 @@
-/**
- * ===================================================
- * ARQUIVO PRINCIPAL: main.js
- * 
- * Este arquivo é responsável por:
- * 1. Carregar a sidebar de /components/sidebar.html
- * 2. Gerenciar funções de abrir/fechar sidebar
- * 3. Marcar o link ativo na navegação
- * 4. Atualizar a posição do indicador visual (barra roxa)
- * 5. Adaptar a sidebar para mobile
- * 
- * Qualquer página que precisar da sidebar deve importar este arquivo
- * ===================================================
- */
-
-/**
- * PASSO 1: Carrega a sidebar do arquivo HTML
- * Busca o arquivo /components/sidebar.html e insere no #sidebar-container
- */
+// ==========================
+// CARREGA SIDEBAR
+// ==========================
 async function loadSidebar() {
   try {
-    const response = await fetch("/components/sidebar.html");
-    if (!response.ok) {
-      throw new Error(`Erro HTTP ${response.status} ao carregar sidebar`);
-    }
-    const html = await response.text();
-    const container = document.getElementById("sidebar-container");
-    if (!container) {
-      console.warn("Container #sidebar-container não encontrado na página");
-      return;
-    }
+    const res = await fetch("/components/sidebar.html");
+    if (!res.ok) throw new Error(res.status);
 
-    container.innerHTML = html;
-    initializeSidebar(); // Inicializa após inserir o HTML
-  } catch (error) {
-    console.error("❌ Erro ao carregar sidebar:", error);
+    const container = document.getElementById("sidebar-container");
+    if (!container) return;
+
+    container.innerHTML = await res.text();
+    initSidebar();
+  } catch (e) {
+    console.error("Erro ao carregar sidebar:", e);
   }
 }
 
-/**
- * PASSO 2: Inicializa todas as funcionalidades da sidebar
- * Esta função roda após a sidebar ser inserida no DOM
- */
-function initializeSidebar() {
+// ==========================
+// INICIALIZA SIDEBAR
+// ==========================
+function initSidebar() {
   const sidebar = document.getElementById("sidebar");
   const overlay = document.getElementById("sidebar-overlay");
-  const menuLinks = document.querySelectorAll(".menu a");
   const menu = document.querySelector(".menu");
+  const links = document.querySelectorAll(".menu a");
 
-  // Verifica se todos os elementos necessários existem
-  if (!sidebar || !overlay || !menu || !menuLinks.length) {
-    console.error("❌ Elementos da sidebar não encontrados no HTML");
-    return;
-  }
+  if (!sidebar || !overlay || !menu || !links.length) return;
 
-  // ============================================
-  // SEÇÃO 1: Funções para controlar a sidebar
-  // ============================================
-  
-  /**
-   * Abre/Fecha a sidebar no DESKTOP
-   * Apenas muda a largura (não afeta o overlay)
-   */
-  const toggleSidebar = () => {
-    sidebar.classList.toggle("open");
+  // ===== CONTROLE =====
+  const toggle = () => sidebar.classList.toggle("open");
+
+  const toggleMobile = () => {
+    const open = sidebar.classList.toggle("open");
+    overlay.classList.toggle("active", open);
+    document.body.style.overflow = open ? "hidden" : "";
   };
 
-  /**
-   * Abre/Fecha a sidebar no MOBILE
-   * Também mostra/esconde o overlay escuro (fundo)
-   * Bloqueia scroll do body quando abrir
-   */
-  const toggleMobileSidebar = () => {
-    const isOpen = sidebar.classList.toggle("open");
-    overlay.classList.toggle("active", isOpen);
-    // Bloqueia scroll da página quando sidebar está aberta
-    document.body.style.overflow = isOpen ? "hidden" : "";
-  };
-
-  /**
-   * Fecha a sidebar completamente
-   * Usada quando clica no overlay ou redimensiona a tela
-   */
-  const closeSidebar = () => {
+  const close = () => {
     sidebar.classList.remove("open");
     overlay.classList.remove("active");
     document.body.style.overflow = "";
   };
 
-  // Expõe as funções globalmente para serem usadas em onclick do HTML
-  window.toggleOpen = toggleSidebar;
-  window.toggleMobileSidebar = toggleMobileSidebar;
-  window.closeSidebar = closeSidebar;
-
-  // ============================================
-  // SEÇÃO 2: Marcar o link ativo
-  // ============================================
-  
-  /**
-   * Descobre qual página está aberta agora
-   * Extrai o nome do arquivo da URL (ex: "dashboard.html", "cards.html")
-   */
-  const currentUrl = window.location.pathname;
-  const currentFile = currentUrl.split('/').pop().split('?')[0].split('#')[0] || 'index.html';
-
-  // Percorre todos os links do menu
-  menuLinks.forEach((link) => {
-    const linkHref = link.getAttribute('href');
-    // Extrai o nome do arquivo do link (ignora caminho completo)
-    const linkFile = linkHref.split('/').pop().split('?')[0].split('#')[0];
-    
-    // Marca como ativo se o arquivo do link é o mesmo da página atual
-    const isActive = (linkFile === currentFile);
-    link.classList.toggle('active', isActive);
+  Object.assign(window, {
+    toggleOpen: toggle,
+    toggleMobileSidebar: toggleMobile,
+    closeSidebar: close
   });
 
-  // ============================================
-  // SEÇÃO 3: Movimento da barra roxa (indicador)
-  // ============================================
-  
-  /**
-   * Atualiza a posição da barra roxa do lado da sidebar
-   * Ela deve ficar ao lado do link ativo
-   * A propriedade CSS --top controla a posição
-   */
-  const updateMenuIndicator = () => {
-    // Encontra o índice do link ativo
-    const activeIndex = Array.from(menuLinks).findIndex((link) =>
-      link.classList.contains('active')
-    );
-    if (activeIndex === -1) return; // Nenhum link ativo encontrado
+  // ===== LINK ATIVO =====
+  const current = location.pathname.split("/").pop()?.split(/[?#]/)[0] || "index.html";
 
-    // Altura de cada item do menu em pixels (padrão 56px)
-    const itemHeight = menuLinks[0]?.offsetHeight || 56;
-    
-    // Calcula a posição: índice * altura = posição vertical
-    // Essa propriedade CSS faz a barra roxa animar para a nova posição
-    menu.style.setProperty('--top', `${activeIndex * itemHeight}px`);
+  links.forEach(link => {
+    const file = link.getAttribute("href")?.split("/").pop()?.split(/[?#]/)[0];
+    link.classList.toggle("active", file === current);
+  });
+
+  // ===== INDICADOR =====
+  const updateIndicator = () => {
+    const index = [...links].findIndex(l => l.classList.contains("active"));
+    if (index < 0) return;
+
+    const h = links[0].offsetHeight || 56;
+    menu.style.setProperty("--top", `${index * h}px`);
   };
 
-  // Aguarda um pouco para o navegador calcular as dimensões corretas
-  setTimeout(updateMenuIndicator, 50);
+  setTimeout(updateIndicator, 50);
 
-  // ============================================
-  // SEÇÃO 4: Responsividade - adaptar para mobile
-  // ============================================
-  
-  /**
-   * Monitora quando a tela é redimensionada
-   * Se virar desktop (> 768px), fecha a sidebar
-   */
+  // ===== RESPONSIVO =====
   window.addEventListener("resize", () => {
-    if (window.innerWidth > 768) {
-      closeSidebar();
-    }
+    if (innerWidth > 768) close();
+  });
+
+  // ===== SPA =====
+  links.forEach(link => {
+    link.addEventListener("click", async (e) => {
+      e.preventDefault();
+
+      const href = link.getAttribute("href");
+      if (!href) return;
+
+      if (innerWidth <= 768) close();
+
+      try {
+        const res = await fetch(href);
+        if (!res.ok) throw new Error();
+
+        const html = await res.text();
+        const temp = document.createElement("div");
+        temp.innerHTML = html;
+
+        const newContent = temp.querySelector("main.content");
+        if (!newContent) return;
+
+        document.querySelector("main.content").replaceWith(newContent);
+
+        links.forEach(l => l.classList.remove("active"));
+        link.classList.add("active");
+
+        setTimeout(updateIndicator, 50);
+
+        const title = newContent.querySelector("h2");
+        if (title) document.title = title.textContent;
+
+        const script = newContent.querySelector('script[type="module"]');
+        if (script) {
+          const s = document.createElement("script");
+          s.type = "module";
+          s.textContent = script.textContent;
+          document.body.appendChild(s);
+        }
+
+      } catch {
+        location.href = href;
+      }
+    });
   });
 }
 
-/**
- * PASSO 3: Inicia tudo quando a página carregar
- * Este é o primeiro código que roda quando o JavaScript é carregado
- */
+// ==========================
+// START
+// ==========================
 loadSidebar();
